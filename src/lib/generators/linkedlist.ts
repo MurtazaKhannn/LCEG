@@ -1,0 +1,1 @@
+export { generateLinkedListExamples } from './array'
