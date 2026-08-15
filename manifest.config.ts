@@ -7,15 +7,15 @@ export default defineManifest({
   version: pkg.version,
   description: 'Get clearer, walkthrough-style examples for LeetCode problems',
   icons: {
-    16: 'public/logo.png',
-    48: 'public/logo.png',
-    128: 'public/logo.png',
+    16: 'public/logo-16.png',
+    48: 'public/logo-48.png',
+    128: 'public/logo-128.png',
   },
   action: {
     default_icon: {
-      16: 'public/logo.png',
-      48: 'public/logo.png',
-      128: 'public/logo.png',
+      16: 'public/logo-16.png',
+      48: 'public/logo-48.png',
+      128: 'public/logo-128.png',
     },
     default_title: 'LCEG - Better Examples',
   },

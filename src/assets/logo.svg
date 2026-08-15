@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#181926" />
+      <stop offset="50%" stop-color="#12131C" />
+      <stop offset="100%" stop-color="#0A0A10" />
+    </linearGradient>
+
+    <!-- Border Glow Gradient -->
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFA116" stop-opacity="0.9" />
+      <stop offset="40%" stop-color="#FF5E00" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#7C3AED" stop-opacity="0.6" />
+    </linearGradient>
+
+    <!-- Core Orange Brand Gradient -->
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFC837" />
+      <stop offset="50%" stop-color="#FFA116" />
+      <stop offset="100%" stop-color="#FF4B00" />
+    </linearGradient>
+
+    <!-- AI Sparkle Golden Gradient -->
+    <linearGradient id="sparkleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="30%" stop-color="#FFF0A0" />
+      <stop offset="70%" stop-color="#FFA116" />
+      <stop offset="100%" stop-color="#FF7700" />
+    </linearGradient>
+
+    <!-- Radial Center Glow -->
+    <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFA116" stop-opacity="0.4" />
+      <stop offset="50%" stop-color="#FF5500" stop-opacity="0.15" />
+      <stop offset="100%" stop-color="#181926" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Squircle Base -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bgGrad)" stroke="url(#borderGrad)" stroke-width="12" />
+
+  <!-- Ambient Glow Behind Symbol -->
+  <circle cx="256" cy="256" r="180" fill="url(#centerGlow)" />
+
+  <!-- Left Code Bracket < -->
+  <path d="M 160 160 L 80 256 L 160 352" 
+        fill="none" 
+        stroke="url(#orangeGrad)" 
+        stroke-width="36" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" />
+
+  <!-- Right Code Bracket > -->
+  <path d="M 352 160 L 432 256 L 352 352" 
+        fill="none" 
+        stroke="url(#orangeGrad)" 
+        stroke-width="36" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" />
+
+  <!-- Center AI Sparkle Star (4-point star representing AI generation) -->
+  <path d="M 256 120 Q 256 256 150 256 Q 256 256 256 392 Q 256 256 362 256 Q 256 256 256 120 Z" 
+        fill="url(#sparkleGrad)" />
+
+  <!-- Small secondary accent sparkle (top-right) -->
+  <path d="M 334 140 Q 334 175 299 175 Q 334 175 334 210 Q 334 175 369 175 Q 334 175 334 140 Z" 
+        fill="#FFF9D2" 
+        opacity="0.95" />
+
+  <!-- Inner core bright dot -->
+  <circle cx="256" cy="256" r="16" fill="#FFFFFF" />
+</svg>
