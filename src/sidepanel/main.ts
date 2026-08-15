@@ -3,7 +3,7 @@ import { sendMessage } from '@/lib/messages'
 import { setCurrentTitleSlug } from '@/lib/cache'
 import { getTitleSlugFromUrl } from '@/lib/slug'
 import { parseExamplesFromHtml } from '@/lib/parse-content'
-import { extractTreeFromExampleInput } from '@/lib/viz/tree'
+import { extractTreeFromExampleInput, isTreeQuestion } from '@/lib/viz/tree'
 import './styles.css'
 
 let currentQuestion: Question | null = null
@@ -63,9 +63,10 @@ function renderOriginalExamples(examples: ParsedExample[]): string {
   `).join('')
 }
 
-function renderAiExamples(examples: AiExample[], fromCache: boolean): string {
+function renderAiExamples(examples: AiExample[], fromCache: boolean, question?: Question | null): string {
+  const isTree = isTreeQuestion(question)
   return examples.map((ex, index) => {
-    const treeAscii = extractTreeFromExampleInput(ex.input)
+    const treeAscii = isTree ? extractTreeFromExampleInput(ex.input) : null
     return `
       <div class="card" data-ai-index="${index}">
         <div class="card-label">${escapeHtml(ex.label)} <span class="ai-badge">AI${fromCache ? ' · cached' : ''}</span></div>
@@ -147,7 +148,7 @@ function renderQuestion(
       <button class="btn btn-primary" id="generate-ai-btn">Generate AI Examples</button>
       <p class="card-note" style="margin-top:8px">Requires a free Gemini API key in Settings. Click the button to generate examples with inputs, outputs, and walkthroughs.</p>
       <div id="ai-examples-container" style="margin-top:12px">
-        ${aiExamples ? renderAiExamples(aiExamples, aiFromCache) : ''}
+        ${aiExamples ? renderAiExamples(aiExamples, aiFromCache, question) : ''}
       </div>
     </div>
 
