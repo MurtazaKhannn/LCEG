@@ -11,138 +11,122 @@ const ENTITY_MAP: Record<string, string> = {
 }
 
 function decodeEntities(text: string): string {
-  return text.replace(/&[a-z]+;|&#\d+;/gi, (entity) => {
-    if (ENTITY_MAP[entity])
-      return ENTITY_MAP[entity]
-    const num = entity.match(/^&#(\d+);$/)
-    if (num)
-      return String.fromCharCode(Number(num[1]))
+  return text.replace(/&[a-z]+;|&#\d+;|&#x[a-f0-9]+;/gi, (entity) => {
+    const lower = entity.toLowerCase()
+    if (ENTITY_MAP[lower])
+      return ENTITY_MAP[lower]
+    const decMatch = entity.match(/^&#(\d+);$/)
+    if (decMatch)
+      return String.fromCharCode(Number(decMatch[1]))
+    const hexMatch = entity.match(/^&#x([a-f0-9]+);$/i)
+    if (hexMatch)
+      return String.fromCharCode(Number.parseInt(hexMatch[1], 16))
     return ' '
   })
 }
 
 /** Works in both extension pages (DOM) and the service worker (no DOMParser). */
 export function stripHtml(html: string): string {
-  if (typeof DOMParser !== 'undefined') {
-    try {
-      const doc = new DOMParser().parseFromString(html, 'text/html')
-      return doc.body.textContent?.replace(/\s+/g, ' ').trim() ?? ''
-    }
-    catch {
-      // fall through to regex path
-    }
-  }
+  if (!html)
+    return ''
 
   return decodeEntities(
     html
       .replace(/<script[\s\S]*?<\/script>/gi, ' ')
       .replace(/<style[\s\S]*?<\/style>/gi, ' ')
       .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/p>/gi, '\n')
+      .replace(/<\/(p|div|pre|li|tr|h\d)>/gi, '\n')
       .replace(/<[^>]+>/g, ' '),
   )
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-function parseExamplesFromPlainText(text: string): ParsedExample[] {
-  const examples: ParsedExample[] = []
-  const pattern
-    = /Example\s+(\d+)\s*:?\s*Input:\s*([\s\S]+?)\s*Output:\s*([\s\S]+?)(?:\s*Explanation:\s*([\s\S]+?))?(?=Example\s+\d+|$)/gi
-
-  let match = pattern.exec(text)
-  while (match) {
-    examples.push({
-      label: `Example ${match[1]}`,
-      input: match[2].trim(),
-      output: match[3].trim(),
-      explanation: match[4]?.trim(),
-    })
-    match = pattern.exec(text)
-  }
-
-  if (examples.length === 0) {
-    const loose = /Input:\s*([\s\S]+?)\s*Output:\s*([\s\S]+?)(?=Input:|$)/gi
-    let i = 1
-    let looseMatch = loose.exec(text)
-    while (looseMatch) {
-      examples.push({
-        label: `Example ${i++}`,
-        input: looseMatch[1].trim(),
-        output: looseMatch[2].trim(),
-      })
-      looseMatch = loose.exec(text)
-    }
-  }
-
-  return examples
-}
-
-function parseExamplesWithDom(html: string): ParsedExample[] {
-  const doc = new DOMParser().parseFromString(html, 'text/html')
-  const examples: ParsedExample[] = []
-
-  const strongs = doc.querySelectorAll('strong')
-  strongs.forEach((strong) => {
-    const text = strong.textContent?.trim() ?? ''
-    if (!/^Example\s+\d+/i.test(text))
-      return
-
-    const container = strong.closest('p')?.parentElement ?? strong.parentElement
-    if (!container)
-      return
-
-    const blockText = container.textContent ?? ''
-    const inputMatch = blockText.match(/Input:\s*(.+?)(?=Output:|Explanation:|Example\s+\d|$)/s)
-    const outputMatch = blockText.match(/Output:\s*(.+?)(?=Explanation:|Example\s+\d|$)/s)
-    const explanationMatch = blockText.match(/Explanation:\s*(.+?)(?=Example\s+\d|$)/s)
-
-    if (inputMatch || outputMatch) {
-      examples.push({
-        label: text.replace(':', ''),
-        input: inputMatch?.[1]?.trim() ?? '',
-        output: outputMatch?.[1]?.trim() ?? '',
-        explanation: explanationMatch?.[1]?.trim(),
-      })
-    }
-  })
-
-  if (examples.length === 0) {
-    const preBlocks = doc.querySelectorAll('pre')
-    preBlocks.forEach((pre, index) => {
-      const text = pre.textContent?.trim() ?? ''
-      if (text.includes('Input:') || text.includes('Output:')) {
-        const inputMatch = text.match(/Input:\s*(.+?)(?=Output:|Explanation:|$)/s)
-        const outputMatch = text.match(/Output:\s*(.+?)(?=Explanation:|$)/s)
-        examples.push({
-          label: `Example ${index + 1}`,
-          input: inputMatch?.[1]?.trim() ?? '',
-          output: outputMatch?.[1]?.trim() ?? '',
-        })
-      }
-    })
-  }
-
-  return examples
+    .split('\n')
+    .map(line => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n')
 }
 
 export function parseExamplesFromHtml(html: string): ParsedExample[] {
-  if (typeof DOMParser !== 'undefined') {
-    try {
-      const fromDom = parseExamplesWithDom(html)
-      if (fromDom.length > 0)
-        return fromDom
+  if (!html)
+    return []
+
+  // Normalize block endings to newlines before stripping tags
+  const textWithBreaks = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|pre|li|tr|h\d)>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+
+  const decoded = decodeEntities(textWithBreaks)
+
+  const normalized = decoded
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .join('\n')
+
+  // Find all example headers like "Example 1:", "Example 2", etc.
+  const exampleHeaderRegex = /(?:^|\n)\s*Example\s+(\d+)\s*:?/gi
+  const matches = [...normalized.matchAll(exampleHeaderRegex)]
+
+  if (matches.length > 0) {
+    const examples: ParsedExample[] = []
+    for (let i = 0; i < matches.length; i++) {
+      const match = matches[i]
+      const exampleNum = match[1]
+      const startIndex = match.index + match[0].length
+      let endIndex = normalized.length
+
+      if (i + 1 < matches.length) {
+        endIndex = matches[i + 1].index
+      }
+      else {
+        const boundaryMatch = normalized.slice(startIndex).search(/(?:^|\n)\s*(?:Constraints|Follow[- ]up|Note):/i)
+        if (boundaryMatch !== -1) {
+          endIndex = startIndex + boundaryMatch
+        }
+      }
+
+      const block = normalized.slice(startIndex, endIndex).trim()
+
+      const inputMatch = block.match(/Input\s*:?\s*([\s\S]+?)(?=\n\s*Output\s*:?|$)/i)
+      const outputMatch = block.match(/Output\s*:?\s*([\s\S]+?)(?=\n\s*Explanation\s*:?|$)/i)
+      const explanationMatch = block.match(/Explanation\s*:?\s*([\s\S]+)$/i)
+
+      if (inputMatch || outputMatch) {
+        examples.push({
+          label: `Example ${exampleNum}`,
+          input: inputMatch ? inputMatch[1].trim() : '',
+          output: outputMatch ? outputMatch[1].trim() : '',
+          explanation: explanationMatch ? explanationMatch[1].trim() : undefined,
+        })
+      }
     }
-    catch {
-      // fall through
+
+    if (examples.length > 0) {
+      return examples
     }
   }
 
-  return parseExamplesFromPlainText(stripHtml(html))
+  // Fallback for unnumbered or loose examples
+  const loosePattern = /(?:^|\n)\s*Input\s*:?\s*([\s\S]+?)\n\s*Output\s*:?\s*([\s\S]+?)(?=(?:\n\s*Explanation\s*:?|\n\s*Input\s*:?|\n\s*Constraints\s*:?|$))/gi
+  const looseMatches: ParsedExample[] = []
+  let looseMatch = loosePattern.exec(normalized)
+  let count = 1
+  while (looseMatch) {
+    looseMatches.push({
+      label: `Example ${count++}`,
+      input: looseMatch[1].trim(),
+      output: looseMatch[2].trim(),
+    })
+    looseMatch = loosePattern.exec(normalized)
+  }
+
+  return looseMatches
 }
 
 export function parseConstraintsFromHtml(html: string): string {
+  if (!html)
+    return ''
   const text = stripHtml(html)
-  const match = text.match(/Constraints:(.+?)(?=Follow-up:|$)/s)
-  return match?.[1]?.trim() ?? ''
+  const match = text.match(/(?:^|\n)\s*Constraints\s*:?\s*([\s\S]+?)(?=\n\s*(?:Follow[- ]up|Note):|$)/i)
+  return match ? match[1].trim() : ''
 }
+
