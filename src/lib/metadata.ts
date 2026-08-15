@@ -16,13 +16,3 @@ export function parseMetadata(metaData: string): ProblemSignature | null {
     return null
   }
 }
-
-export function hasTreeNode(signature: ProblemSignature): boolean {
-  return signature.params.some(p => p.type.includes('TreeNode'))
-    || signature.returnType.includes('TreeNode')
-}
-
-export function hasListNode(signature: ProblemSignature): boolean {
-  return signature.params.some(p => p.type.includes('ListNode'))
-    || signature.returnType.includes('ListNode')
-}

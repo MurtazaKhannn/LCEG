@@ -84,21 +84,6 @@ export function treeArrayToAscii(arrayNotation: string): string | null {
   }
 }
 
-export function extractTreeArraysFromInputs(inputs: Record<string, string>): Array<{ name: string, ascii: string }> {
-  const results: Array<{ name: string, ascii: string }> = []
-
-  for (const [name, value] of Object.entries(inputs)) {
-    if (value.startsWith('[')) {
-      const ascii = treeArrayToAscii(value)
-      if (ascii && ascii !== '(empty tree)') {
-        results.push({ name, ascii })
-      }
-    }
-  }
-
-  return results
-}
-
 export function extractTreeFromExampleInput(input: string): string | null {
   const match = input.match(/=\s*(\[[^\]]*\])/)
   if (!match)

@@ -1,6 +1,6 @@
-import type { AiExample, AiExamplesResponse, GeneratedExample, Question } from '../types'
+import type { AiExample, AiExamplesResponse, Question } from '../types'
 import { parseMetadata } from '../metadata'
-import { buildExamplesPrompt, buildExplainMorePrompt, buildFillGeneratedOutputsPrompt } from './prompt'
+import { buildExamplesPrompt, buildExplainMorePrompt } from './prompt'
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models'
 
@@ -95,35 +95,6 @@ export async function generateAiExamples(
   }
 
   return parsed.examples
-}
-
-export async function fillGeneratedOutputs(
-  apiKey: string,
-  model: string,
-  question: Question,
-  examples: GeneratedExample[],
-): Promise<GeneratedExample[]> {
-  const prompt = buildFillGeneratedOutputsPrompt(question, examples)
-  const text = await callGemini(apiKey, model, prompt)
-  const parsed = parseJsonResponse<{
-    results: Array<{ index: number, output: string, note?: string }>
-  }>(text)
-
-  if (!parsed.results?.length) {
-    throw new GeminiError('AI returned no outputs for practice inputs')
-  }
-
-  return examples.map((ex, i) => {
-    const result = parsed.results.find(r => r.index === i) ?? parsed.results[i]
-    if (!result?.output) {
-      return ex
-    }
-    return {
-      ...ex,
-      output: String(result.output).trim(),
-      note: result.note?.trim() || ex.note,
-    }
-  })
 }
 
 export async function explainMore(

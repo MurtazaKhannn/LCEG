@@ -1,20 +1,14 @@
-import type { AiExample, GeneratedExample, ParsedExample, Question } from '@/lib/types'
+import type { AiExample, ParsedExample, Question } from '@/lib/types'
 import { sendMessage } from '@/lib/messages'
-import { getSettings, setCurrentTitleSlug } from '@/lib/cache'
+import { setCurrentTitleSlug } from '@/lib/cache'
 import { getTitleSlugFromUrl } from '@/lib/slug'
 import { parseExamplesFromHtml } from '@/lib/parse-content'
-import { parseMetadata, hasTreeNode } from '@/lib/metadata'
-import { generateExamples } from '@/lib/generators'
-import { extractTreeArraysFromInputs, extractTreeFromExampleInput } from '@/lib/viz/tree'
+import { extractTreeFromExampleInput } from '@/lib/viz/tree'
 import './styles.css'
 
 let currentQuestion: Question | null = null
 let currentSlug: string | null = null
-let currentAiExamples: AiExample[] | null = null
-let currentAiFromCache = false
-let currentGenerated: GeneratedExample[] | null = null
 let aiGenerateCooldown = false
-let fillOutputsInFlight = false
 
 const loadingEl = document.getElementById('loading')!
 const contentEl = document.getElementById('content')!
@@ -51,10 +45,6 @@ function escapeHtml(text: string): string {
   return div.innerHTML
 }
 
-function formatGeneratedInputs(inputs: Record<string, string>): string {
-  return Object.entries(inputs).map(([k, v]) => `${k} = ${v}`).join('\n')
-}
-
 function renderOriginalExamples(examples: ParsedExample[]): string {
   if (!examples.length) {
     return '<p class="card-note">No examples parsed from description.</p>'
@@ -71,26 +61,6 @@ function renderOriginalExamples(examples: ParsedExample[]): string {
       </div>
     </div>
   `).join('')
-}
-
-function renderGeneratedExamples(examples: GeneratedExample[], showTree: boolean): string {
-  return examples.map((ex) => {
-    const inputText = formatGeneratedInputs(ex.inputs)
-    const trees = showTree ? extractTreeArraysFromInputs(ex.inputs) : []
-
-    return `
-      <div class="card">
-        <div class="card-label">${ex.label} <span class="practice-label">(practice input)</span></div>
-        <div class="card-io">Input: ${escapeHtml(inputText)}</div>
-        <div class="card-io">Output: ${escapeHtml(ex.output)}</div>
-        <div class="card-note">${escapeHtml(ex.note)}</div>
-        ${trees.map(t => `<pre class="tree-viz">${escapeHtml(t.ascii)}</pre>`).join('')}
-        <div class="card-actions">
-          <button class="btn btn-secondary btn-sm copy-btn">Copy</button>
-        </div>
-      </div>
-    `
-  }).join('')
 }
 
 function renderAiExamples(examples: AiExample[], fromCache: boolean): string {
@@ -144,32 +114,19 @@ function renderCompare(original: ParsedExample[], aiExamples: AiExample[]): stri
   `
 }
 
-function needsOutputFill(examples: GeneratedExample[]): boolean {
-  return examples.some(ex => ex.output.startsWith('Not auto-computed'))
-}
-
 function renderQuestion(
   question: Question,
   aiExamples: AiExample[] | null = null,
   aiFromCache = false,
-  generatedOverride: GeneratedExample[] | null = null,
 ) {
   currentQuestion = question
-  currentAiExamples = aiExamples
-  currentAiFromCache = aiFromCache
 
   const originalExamples = parseExamplesFromHtml(question.content)
-  const signature = parseMetadata(question.metaData)
-  const generated = generatedOverride ?? generateExamples(signature)
-  currentGenerated = generated
-  const showTree = signature ? hasTreeNode(signature) : false
 
   const difficultyClass = `badge-difficulty-${question.difficulty.toLowerCase()}`
   const tags = question.topicTags.map(t =>
     `<span class="badge badge-tag">${escapeHtml(t.name)}</span>`,
   ).join('')
-
-  const fillingOutputs = needsOutputFill(generated)
 
   contentEl.innerHTML = `
     <div class="problem-header">
@@ -185,16 +142,10 @@ function renderQuestion(
       ${renderOriginalExamples(originalExamples)}
     </div>
 
-    <div class="section" id="generated-section">
-      <div class="section-title">Generated Inputs</div>
-      ${fillingOutputs ? '<p class="card-note" id="generated-fill-status"><span class="spinner"></span> Computing correct outputs…</p>' : ''}
-      ${renderGeneratedExamples(generated, showTree)}
-    </div>
-
     <div class="section" id="ai-section">
       <div class="section-title">AI Examples</div>
       <button class="btn btn-primary" id="generate-ai-btn">Generate AI Examples</button>
-      <p class="card-note" style="margin-top:8px">Requires a free Gemini API key in Settings.</p>
+      <p class="card-note" style="margin-top:8px">Requires a free Gemini API key in Settings. Click the button to generate examples with inputs, outputs, and walkthroughs.</p>
       <div id="ai-examples-container" style="margin-top:12px">
         ${aiExamples ? renderAiExamples(aiExamples, aiFromCache) : ''}
       </div>
@@ -208,55 +159,6 @@ function renderQuestion(
   contentEl.classList.remove('hidden')
 
   bindEvents(aiExamples ?? [])
-
-  if (fillingOutputs) {
-    fillGeneratedOutputs(question, generated).catch(() => {})
-  }
-}
-
-async function fillGeneratedOutputs(question: Question, examples: GeneratedExample[]) {
-  if (!currentSlug || fillOutputsInFlight)
-    return
-
-  const settings = await getSettings()
-  if (!settings.geminiApiKey) {
-    const status = document.getElementById('generated-fill-status')
-    if (status) {
-      status.innerHTML = 'Add a Gemini API key in Settings to auto-compute correct outputs for these practice inputs.'
-    }
-    return
-  }
-
-  fillOutputsInFlight = true
-  try {
-    const response = await sendMessage({
-      type: 'FILL_GENERATED_OUTPUTS',
-      titleSlug: currentSlug,
-      question,
-      examples,
-    }) as { type: string, examples?: GeneratedExample[], error?: string }
-
-    if (response.type === 'FILLED_GENERATED_ERROR' || response.error) {
-      const status = document.getElementById('generated-fill-status')
-      if (status) {
-        status.textContent = response.error ?? 'Failed to compute outputs'
-      }
-      return
-    }
-
-    if (response.examples && currentQuestion === question) {
-      renderQuestion(question, currentAiExamples, currentAiFromCache, response.examples)
-    }
-  }
-  catch (err) {
-    const status = document.getElementById('generated-fill-status')
-    if (status) {
-      status.textContent = err instanceof Error ? err.message : 'Failed to compute outputs'
-    }
-  }
-  finally {
-    fillOutputsInFlight = false
-  }
 }
 
 function bindEvents(existingAi: AiExample[]) {
@@ -303,7 +205,7 @@ async function handleGenerateAi() {
     }
 
     if (response.examples) {
-      renderQuestion(currentQuestion, response.examples, response.fromCache ?? false, currentGenerated)
+      renderQuestion(currentQuestion, response.examples, response.fromCache ?? false)
       showToast(response.fromCache ? 'Loaded from cache' : 'AI examples generated')
     }
   }
@@ -360,9 +262,6 @@ async function handleExplainMore(index: number, examples: AiExample[]) {
 
 async function loadProblem(titleSlug: string) {
   currentSlug = titleSlug
-  currentAiExamples = null
-  currentGenerated = null
-  fillOutputsInFlight = false
   loadingEl.classList.remove('hidden')
   contentEl.classList.add('hidden')
   errorEl.classList.add('hidden')
@@ -400,8 +299,6 @@ async function syncFromActiveTab(force = false) {
   if (!slug) {
     currentSlug = null
     currentQuestion = null
-    currentAiExamples = null
-    currentGenerated = null
     showError('Open a LeetCode problem, then open this panel.')
     return
   }

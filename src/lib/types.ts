@@ -33,19 +33,6 @@ export interface ProblemSignature {
   returnType: string
 }
 
-export interface GeneratedExample {
-  label: 'simple' | 'medium' | 'edge'
-  inputs: Record<string, string>
-  /** Expected result when known; otherwise a practice hint. */
-  output: string
-  note: string
-}
-
-export interface CachedGeneratedExamples {
-  examples: GeneratedExample[]
-  cachedAt: number
-}
-
 export interface AiExample {
   label: 'simple' | 'medium' | 'edge'
   input: string

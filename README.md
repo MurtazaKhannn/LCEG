@@ -1,14 +1,13 @@
 # LCEG — LeetCode Example Generator
 
-A Chrome extension that helps you understand LeetCode problems with clearer examples, instant practice inputs, and AI-powered walkthroughs.
+A Chrome extension that helps you understand LeetCode problems with clearer AI-powered examples and walkthroughs. The LeetCode page stays unmodified; everything appears in the Chrome side panel.
 
 ## Features
 
-- **Original examples** — Parses LeetCode's built-in examples (shown in the side panel; page stays stock)
-- **Generated inputs** — Instant rule-based practice inputs (simple, medium, edge) with zero API calls
-- **AI examples** — Gemini-generated examples with input, output, and step-by-step walkthroughs
-- **Side panel** — Full view with multiple examples, compare mode, copy buttons, and "Explain more"
-- **Tree visualization** — ASCII tree diagrams for tree problems
+- **Original examples** — Parses LeetCode's built-in examples in the side panel
+- **AI examples** — Click **Generate AI Examples** for Gemini-generated inputs, outputs, and step-by-step walkthroughs
+- **Side panel** — Compare mode, copy buttons, and "Explain more"
+- **Tree visualization** — ASCII tree diagrams for tree problems (in AI examples)
 
 ## Installation (Development)
 
@@ -42,8 +41,8 @@ Recommended model: `gemini-2.5-flash` (best free-tier balance).
 
 1. Open any LeetCode problem page (the page UI is unchanged)
 2. Click the extension icon to open the **side panel**
-3. Review original examples and generated practice inputs
-4. Click **Generate AI Examples** (requires API key)
+3. Review the original LeetCode examples
+4. Click **Generate AI Examples** (requires API key) to create AI examples with inputs, outputs, and walkthroughs
 5. Use **Explain more** on any AI example for a deeper walkthrough
 6. Switch LeetCode problem tabs — the side panel refreshes automatically
 
@@ -52,11 +51,10 @@ Recommended model: `gemini-2.5-flash` (best free-tier balance).
 ```
 src/
 ├── background/     # Service worker — GraphQL, AI, caching, badge
-├── sidepanel/      # Main UI (all examples)
+├── sidepanel/      # Main UI
 ├── options/        # Settings page (API key)
 └── lib/
     ├── graphql.ts  # LeetCode API client
-    ├── generators/ # Rule-based example generator
     ├── ai/         # Gemini client + prompts
     └── viz/        # Tree ASCII visualization
 ```
@@ -79,4 +77,3 @@ After code changes, reload the extension in `chrome://extensions`.
 ## License
 
 Private — for personal use.
-# LCEG

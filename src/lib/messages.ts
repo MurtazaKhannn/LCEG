@@ -1,4 +1,4 @@
-import type { AiExample, GeneratedExample, Question } from './types'
+import type { AiExample, Question } from './types'
 
 export type Message =
   | { type: 'GET_PROBLEM'; titleSlug: string }
@@ -9,9 +9,6 @@ export type Message =
   | { type: 'AI_EXAMPLES_ERROR'; error: string }
   | { type: 'EXPLAIN_MORE'; titleSlug: string; question: Question; example: AiExample }
   | { type: 'EXPLAIN_MORE_DATA'; walkthrough: string[] }
-  | { type: 'FILL_GENERATED_OUTPUTS'; titleSlug: string; question: Question; examples: GeneratedExample[] }
-  | { type: 'FILLED_GENERATED_DATA'; examples: GeneratedExample[]; fromCache: boolean }
-  | { type: 'FILLED_GENERATED_ERROR'; error: string }
 
 export function sendMessage<T extends Message['type']>(
   message: Extract<Message, { type: T }>,

@@ -2,13 +2,11 @@ import type { Message } from '@/lib/messages'
 import { fetchQuestion } from '@/lib/graphql'
 import {
   getCachedAiExamples,
-  getCachedGeneratedExamples,
   getSettings,
   setCachedAiExamples,
-  setCachedGeneratedExamples,
   setCurrentTitleSlug,
 } from '@/lib/cache'
-import { generateAiExamples, explainMore, fillGeneratedOutputs } from '@/lib/ai/gemini'
+import { generateAiExamples, explainMore } from '@/lib/ai/gemini'
 import { getTitleSlugFromUrl } from '@/lib/slug'
 import type { Question } from '@/lib/types'
 
@@ -64,9 +62,6 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
     else if (message.type === 'EXPLAIN_MORE') {
       sendResponse({ type: 'AI_EXAMPLES_ERROR', error: err.message })
     }
-    else if (message.type === 'FILL_GENERATED_OUTPUTS') {
-      sendResponse({ type: 'FILLED_GENERATED_ERROR', error: err.message })
-    }
     else {
       sendResponse({ error: err.message })
     }
@@ -103,28 +98,6 @@ async function handleMessage(message: Message) {
       await setCachedAiExamples(message.titleSlug, examples)
       broadcastAiExamples(examples, false)
       return { type: 'AI_EXAMPLES_DATA', examples, fromCache: false }
-    }
-
-    case 'FILL_GENERATED_OUTPUTS': {
-      const cached = await getCachedGeneratedExamples(message.titleSlug)
-      if (cached) {
-        return { type: 'FILLED_GENERATED_DATA', examples: cached, fromCache: true }
-      }
-
-      const settings = await getSettings()
-      if (!settings.geminiApiKey) {
-        throw new Error('No Gemini API key configured. Open extension settings to add one.')
-      }
-
-      const examples = await fillGeneratedOutputs(
-        settings.geminiApiKey,
-        settings.geminiModel,
-        message.question,
-        message.examples,
-      )
-
-      await setCachedGeneratedExamples(message.titleSlug, examples)
-      return { type: 'FILLED_GENERATED_DATA', examples, fromCache: false }
     }
 
     case 'EXPLAIN_MORE': {

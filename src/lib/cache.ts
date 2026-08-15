@@ -1,15 +1,10 @@
-import type { AiExample, CachedAiExamples, CachedGeneratedExamples, GeneratedExample, Settings } from './types'
+import type { AiExample, CachedAiExamples, Settings } from './types'
 
 const AI_CACHE_PREFIX = 'ai_examples:'
-const GENERATED_CACHE_PREFIX = 'generated_examples:'
 const AI_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 export function aiCacheKey(titleSlug: string): string {
   return `${AI_CACHE_PREFIX}${titleSlug}`
-}
-
-export function generatedCacheKey(titleSlug: string): string {
-  return `${GENERATED_CACHE_PREFIX}${titleSlug}`
 }
 
 export async function getCachedAiExamples(titleSlug: string): Promise<AiExample[] | null> {
@@ -34,30 +29,6 @@ export async function setCachedAiExamples(titleSlug: string, examples: AiExample
     cachedAt: Date.now(),
   }
   await chrome.storage.local.set({ [aiCacheKey(titleSlug)]: payload })
-}
-
-export async function getCachedGeneratedExamples(titleSlug: string): Promise<GeneratedExample[] | null> {
-  const key = generatedCacheKey(titleSlug)
-  const result = await chrome.storage.local.get(key)
-  const cached = result[key] as CachedGeneratedExamples | undefined
-
-  if (!cached)
-    return null
-
-  if (Date.now() - cached.cachedAt > AI_CACHE_TTL_MS) {
-    await chrome.storage.local.remove(key)
-    return null
-  }
-
-  return cached.examples
-}
-
-export async function setCachedGeneratedExamples(titleSlug: string, examples: GeneratedExample[]): Promise<void> {
-  const payload: CachedGeneratedExamples = {
-    examples,
-    cachedAt: Date.now(),
-  }
-  await chrome.storage.local.set({ [generatedCacheKey(titleSlug)]: payload })
 }
 
 const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash'
